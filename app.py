@@ -123,13 +123,22 @@ with button_col:
     if st.button("📤 Send to WhatsApp", disabled=send_disabled, use_container_width=True):
         with st.spinner("Summarizing your day..."):
             summary = ask_gemini([SUMMARY_REQUEST_PROMPT])
-        success, info = send_whatsapp(st.session_state.whatsapp_number, st.session_state.name, summary)
-        if success:
-            st.success("Sent! Check your WhatsApp 📲")
+            st.session_state.last_summary = summary
+        
+        if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+            success, info = send_whatsapp(st.session_state.whatsapp_number, st.session_state.name, summary)
+            if success:
+                st.success("Sent! Check your WhatsApp 📲")
+            else:
+                st.warning(f"Couldn't send via Twilio ({info}). See summary below!")
         else:
-            st.error(f"Couldn't send that: {info}")
+            st.info("Summary generated! (Twilio credentials optional)")
 
 st.caption(f"Logged in as {st.session_state.name} - updates go to {st.session_state.whatsapp_number}")
+
+if "last_summary" in st.session_state:
+    with st.expander("📋 Latest Daily Nutrition Summary", expanded=True):
+        st.write(st.session_state.last_summary)
 
 if not st.session_state.messages:
     add_message("assistant", "text", WELCOME_MESSAGE_TEMPLATE.format(name=st.session_state.name))
