@@ -59,17 +59,27 @@ def clean_whatsapp_text(text):
 
 
 def send_whatsapp(to_number, user_name, summary):
-    # Content template expects {{1}} = name, {{2}} = summary.
     try:
-        content_variables = json.dumps(
-            {"1": user_name, "2": clean_whatsapp_text(summary)}, ensure_ascii=False
-        )
-        message = twilio_client.messages.create(
-            from_=TWILIO_WHATSAPP_FROM,
-            to=f"whatsapp:{to_number}",
-            content_sid=TWILIO_CONTENT_SID,
-            content_variables=content_variables,
-        )
+        formatted_summary = clean_whatsapp_text(summary)
+        # If Content SID is provided (starts with HX), use Content Template API
+        if TWILIO_CONTENT_SID and TWILIO_CONTENT_SID.startswith("HX"):
+            content_variables = json.dumps(
+                {"1": user_name, "2": formatted_summary}, ensure_ascii=False
+            )
+            message = twilio_client.messages.create(
+                from_=TWILIO_WHATSAPP_FROM,
+                to=f"whatsapp:{to_number}",
+                content_sid=TWILIO_CONTENT_SID,
+                content_variables=content_variables,
+            )
+        else:
+            # Fallback for free trial accounts without template approval
+            body_text = f"Hi {user_name}, here's your MacroSnap summary:\n\n{formatted_summary}"
+            message = twilio_client.messages.create(
+                from_=TWILIO_WHATSAPP_FROM,
+                to=f"whatsapp:{to_number}",
+                body=body_text,
+            )
         return True, message.sid
     except Exception as error:
         return False, str(error)
